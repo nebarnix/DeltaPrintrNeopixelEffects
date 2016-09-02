@@ -41,7 +41,7 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
-  mode = 0;
+  mode = 4;
   mSecTime = 0;
   setMaster(PIXEL_COUNTL,255,255,255);
   strip.show();
@@ -85,6 +85,20 @@ void loop() {
         //strip.show();
         //delay(100);
         }
+     else if(mode == 4)
+        {
+        //setMaster(PIXEL_COUNTL,200,255,255);
+        //outputMaster();
+        //strip.show();
+        //delay(100);
+        }
+     else if(mode == 5)
+        {
+        //setMaster(PIXEL_COUNTL,200,255,255);
+        //outputMaster();
+        //strip.show();
+        //delay(100);
+        }
      else
         mode = 0;
      }
@@ -109,7 +123,27 @@ void updateMaster(char numPixels, char mode)
             delay(20);
             mSecTime = mSecTime + 20;
             break;
-  }
+        case 4: Firework(PIXEL_COUNTL,200,200,255, random(1,255), random(1,255), random(1,255), 1.1, 1.14, 1.4);
+            delay(20);
+            mSecTime = mSecTime + 20;
+            break;
+        case 5: Firework(PIXEL_COUNTL,random(1,255),random(1,255),random(1,255), random(1,255), random(1,255), random(1,255), 1.4, 1.1, 1.2);
+            delay(20);
+            mSecTime = mSecTime + 20;
+            break;
+        }
+            
+            
+}
+
+void setMaster(int numPixels,unsigned char Rin,unsigned char Bin,unsigned char Gin)
+{
+for(unsigned char i=0; i<numPixels; i++) 
+   {
+   masterR[i]=Rin;
+   masterG[i]=Gin;
+   masterB[i]=Bin;
+   }
 }
 
 void outputMaster()
@@ -212,13 +246,120 @@ void Rainbow(int numPixels)
     j++;
 }
 
-void setMaster(int numPixels,unsigned char Rin,unsigned char Bin,unsigned char Gin)
+void Firework(unsigned char numPixels, unsigned char R,unsigned char G, unsigned char B,unsigned char Rt,unsigned char Gt, unsigned char Bt, float Kr, float Kg, float Kb)
 {
-for(unsigned char i=0; i<numPixels; i++) 
+// Many of these parameters should be bounded randoms for extra special effects =D
+
+// velMax without going off screen is 17.2 pixels/sec with gravity set to 4.
+// Total air time is 8.6 seconds. 
+// Apogee is at 4.3 seconds. 
+// 5 second fuse seems good
+
+// velMidpoint is 12 pixels/sec with gravity set to 4
+// Total air time is 6 seconds
+// Apogee is at 3 seconds
+// 4 second fuse seems good
+
+static char state=0,shellPos=0;
+static int fuseTime=0,splosionSize=0,timeShell0=0;
+static float vel0=0,KrSplosion,KgSplosion,KbSplosion;
+float gravity=.000004; //pixels per second per second
+
+//shellPos = shellPos + sign; 
+//if(shellPos >= numPixels || eyePos < 0)
+//   sign = sign * -1;  
+switch(state)
    {
-   masterR[i]=Rin;
-   masterG[i]=Gin;
-   masterB[i]=Bin;
+   case 0: //Init
+      shellPos=0;
+      vel0 = random(1200,1720)/100000.0;
+      //vel0 = .015;
+      //vel0 = vel0+vel0*random(-1*1000,1*1000)/1000.0*.15; //10 percent variation of velocity
+      //vel0 = vel0+vel0*(1-0.5)*2.0*.1; //10 percent variation of velocity
+      //fuseTime = 5000; 
+      //fuseTime = fuseTime+fuseTime*random(-1*1000,1*1000)/1000.0*.15; //10 percent variation of velocity
+      fuseTime = random(3000,7000);
+      timeShell0 = mSecTime; //Log start time for zero ref
+      splosionSize = random(2,10);
+      state=1;
+      break;
+      
+   case 1: //Fire Shell
+      //shellPos = -(1/2)      *g*t^2+v0t+y0
+      shellPos = -0.5*gravity*(mSecTime-timeShell0)*(mSecTime-timeShell0)+(mSecTime-timeShell0)*vel0;
+      if(shellPos < 0 || (mSecTime-timeShell0) > fuseTime)
+         state=2;
+      break;
+      
+   case 2: //Shell exploding
+      for(int i=shellPos-splosionSize; i <= shellPos+splosionSize; i++)
+         {
+         if( i > 0 && i < numPixels)
+            {
+            masterR[i] = Rt+(ZeroClip(random(-2*1000,2*1000)/1000.0)-1)*75.0; //create random number, chop off botton half to zero to make sparse sparkles
+            masterG[i] = Gt+(ZeroClip(random(-2*1000,2*1000)/1000.0)-1)*75.0;
+            masterB[i] = Bt+(ZeroClip(random(-2*1000,2*1000)/1000.0)-1)*75.0;
+            }
+         }   
+      KrSplosion = random(1.01*1000,1.2*1000)/1000.0;
+      KgSplosion = random(1.01*1000,1.2*1000)/1000.0;
+      KbSplosion = random(1.01*1000,1.2*1000)/1000.0;
+      
+      Kr = KrSplosion;
+      Kg = KgSplosion;
+      Kb = KbSplosion;
+      
+      state = 3;
+      break;
+      
+   case 3: //Shell fading
+      for(int i=shellPos-splosionSize; i <= shellPos+splosionSize; i++)
+         {
+         if( i > 0 && i < numPixels)
+            { //sparkle needs works because per color sparkle is so improbable it will only affect R G or B, never other colors...
+              //maybe calc distributed color THEN dice roll to implement instead?
+            float sparkle = ZeroClip(random(-1000,10))/7.5; //bound between 0 and 10/7.5=1.3x increase
+            masterR[i] = masterR[i]+masterR[i]*(sparkle+ZeroClip(random(-4000,10))/2.0); //per color sparkle bounded between 0 and 5x
+            masterG[i] = masterG[i]+masterG[i]*(sparkle+ZeroClip(random(-4000,10))/2.0); //per color sparkle too
+            masterB[i] = masterB[i]+masterB[i]*(sparkle+ZeroClip(random(-4000,10))/2.0); //per color sparkle too
+            }
+         }   
+         
+      Kr = KrSplosion;
+      Kg = KgSplosion;
+      Kb = KbSplosion;
+      if((mSecTime-timeShell0) > 8000)
+         state = 0;
+      break;
+   }
+        
+for( int i = 0; i < numPixels;  i++ )
+   {
+   if(state == 1 && i < shellPos)  //only sparkle under rising shell
+      {
+      float sparkle = ZeroClip(random(-1000,10))/7.5; //bound between 0 and 10/7.5=1.3x increase
+      masterR[i] = masterR[i]+masterR[i]*(sparkle+ZeroClip(random(-4000,10))/2.0); //per color sparkle bounded between 0 and 5x
+      masterG[i] = masterG[i]+masterG[i]*(sparkle+ZeroClip(random(-4000,10))/2.0); //per color sparkle too
+      masterB[i] = masterB[i]+masterB[i]*(sparkle+ZeroClip(random(-4000,10))/2.0); //per color sparkle too
+      }
+   
+   masterR[i] = masterR[i] / Kr;
+   masterG[i] = masterG[i] / Kg;
+   masterB[i] = masterB[i] / Kb;
+      
+   if(i == shellPos && state == 1)
+      {
+      masterR[i] = R;
+      masterG[i] = G;
+      masterB[i] = B;
+      }
    }
 }
 
+float ZeroClip(float input)
+{
+  if( input < 0)
+     return 0;
+  else
+     return input;
+}
