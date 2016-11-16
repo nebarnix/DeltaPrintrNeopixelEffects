@@ -35,6 +35,7 @@ int mode;
 unsigned int mSecTime;
 
 void setup() {
+  randomSeed(analogRead(0));
   memset(masterR, 0, sizeof(masterR));
   memset(masterG, 0, sizeof(masterG));
   memset(masterB, 0, sizeof(masterB));
